@@ -1,0 +1,37 @@
+---
+- hosts: all
+  vars:
+    apps_dir: /opt
+
+  tasks:
+    - name: download go-agent
+      get_url: >
+        url=http://download.go.cd/gocd-rpm/go-agent-14.4.0-1356.noarch.rpm 
+        dest={{ ansible_env['HOME'] }}
+      register: go_download
+
+    - name: install software packages
+      yum: pkg={{ item }} state=present
+      with_items:
+        - java-1.7.0
+        - git
+        - unzip
+        - "{{ go_download.dest }}"
+      sudo: yes
+
+    - name: download packer
+      get_url: >
+        url=https://dl.bintray.com/mitchellh/packer/packer_0.7.5_linux_amd64.zip
+        dest={{ ansible_env['HOME'] }}
+      register: packer_download
+
+    - name: create packer install dir
+      file: state=directory owner=centos path={{ apps_dir }}/packer
+      sudo: yes
+
+    - name: install packer
+      unarchive: copy=no src={{ packer_download.dest }} dest={{ apps_dir }}/packer
+
+    - name: apply permissions for go user on packer
+      file: state=directory owner=go group=go recurse=yes path={{ apps_dir }}/packer
+      sudo: yes
